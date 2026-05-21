@@ -60,8 +60,13 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and not already retried
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If 401 and not already retried — skip for the refresh endpoint itself
+    // to avoid a deadlock (refresh 401 → interceptor waits for refresh → hangs)
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url.includes('/auth/refresh')
+    ) {
       originalRequest._retry = true;
 
       if (!isRefreshing) {
