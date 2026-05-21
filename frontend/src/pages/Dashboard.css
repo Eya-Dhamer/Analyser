@@ -1,0 +1,151 @@
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.analyses-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.analyses-header h2 {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.config-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.loading-center {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.personal-last-updated {
+  color: var(--text-muted);
+  display: inline-block;
+  margin-top: 6px;
+}
+
+.personal-range-toggle {
+  display: inline-flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 4px;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  border-radius: 999px;
+}
+
+.personal-range-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.personal-range-btn:hover {
+  color: var(--text-primary);
+  background: rgba(124, 58, 237, 0.2);
+}
+
+.personal-range-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  box-shadow: 0 6px 14px rgba(124, 58, 237, 0.35);
+}
+
+.personal-charts-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.personal-chart-card {
+  padding: 20px;
+  min-height: 320px;
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+  border: 1px solid rgba(124, 58, 237, 0.16);
+}
+
+.personal-chart-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.35);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.personal-chart-card-wide {
+  grid-column: 1 / -1;
+}
+
+.personal-empty-chart {
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.05);
+  padding: 20px;
+}
+
+.personal-animate-in {
+  animation: personalFadeUp 0.55s ease-out both;
+}
+
+.stat-card.personal-animate-in {
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.stat-card.personal-animate-in:hover {
+  transform: translateY(-3px);
+  border-color: rgba(124, 58, 237, 0.42);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+}
+
+.personal-delay-1 {
+  animation-delay: 0.08s;
+}
+
+.personal-delay-2 {
+  animation-delay: 0.16s;
+}
+
+.personal-delay-3 {
+  animation-delay: 0.24s;
+}
+
+@keyframes personalFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
