@@ -97,11 +97,20 @@ const submitAnalysis = async (req, res) => {
             });
             await applyAiResultToAnalysis(analysis, result, deviceType);
         } catch (aiErr) {
-            analysis.status = 'failed';
-            await analysis.save();
+            console.error('AI analysis/save error:', aiErr.message);
+            try {
+                analysis.status = 'failed';
+                await analysis.save();
+            } catch (saveErr) {
+                console.error('Failed to mark analysis as failed:', saveErr.message);
+            }
         }
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        if (!res.headersSent) {
+            res.status(500).json({ error: err.message });
+        } else {
+            console.error('submitAnalysis post-response error:', err.message);
+        }
     }
 };
 
