@@ -28,7 +28,7 @@ const analysisSchema = new mongoose.Schema({
     },
     agentUsed: {
         type: String,
-        enum: ['cisco', 'juniper', 'huawei', 'firewall', 'generic'],
+        enum: ['cisco', 'cisco_ios', 'juniper', 'juniper_junos', 'huawei', 'palo_alto', 'firewall', 'generic'],
         default: 'generic',
     },
     processingTime: {
