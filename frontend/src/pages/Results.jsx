@@ -233,7 +233,7 @@ export default function Results() {
     setLoading(true);
     fetchAnalysis().then((data) => {
       setLoading(false);
-      if (data?.status === 'analyzing') {
+      if (data?.status === 'pending') {
         setPolling(true);
       }
     });
@@ -243,7 +243,7 @@ export default function Results() {
     if (!polling) return;
     const interval = setInterval(async () => {
       const data = await fetchAnalysis();
-      if (data.status !== 'analyzing') setPolling(false);
+      if (data.status !== 'pending') setPolling(false);
     }, 3000);
     return () => clearInterval(interval);
   }, [polling, fetchAnalysis]);
@@ -274,7 +274,7 @@ export default function Results() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
   if (!analysis) return <div className="page"><div className="alert alert-error">Analysis not found</div></div>;
 
-  const isAnalyzing = analysis.status === 'analyzing';
+  const isAnalyzing = analysis.status === 'pending';
 
   return (
     <div className="page">
