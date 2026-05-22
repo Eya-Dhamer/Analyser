@@ -100,6 +100,7 @@ const submitAnalysis = async (req, res) => {
             console.error('AI analysis/save error:', aiErr.message);
             try {
                 analysis.status = 'failed';
+                analysis.results = undefined;
                 await analysis.save();
             } catch (saveErr) {
                 console.error('Failed to mark analysis as failed:', saveErr.message);
@@ -422,8 +423,14 @@ const submitAnalysisFile = async (req, res) => {
             });
             await applyAiResultToAnalysis(analysis, result, deviceType);
         } catch (aiErr) {
-            analysis.status = 'failed';
-            await analysis.save();
+            console.error('AI analysis/save error:', aiErr.message);
+            try {
+                analysis.status = 'failed';
+                analysis.results = undefined;
+                await analysis.save();
+            } catch (saveErr) {
+                console.error('Failed to mark analysis as failed:', saveErr.message);
+            }
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
