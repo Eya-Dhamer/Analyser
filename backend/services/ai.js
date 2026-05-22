@@ -39,6 +39,18 @@ function mergeOutputsFromWorkflow(outputs) {
     return merged;
 }
 
+function coerceToString(val) {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+}
+
+function coerceToObjectArray(val) {
+    if (!Array.isArray(val)) return [];
+    return val.filter((item) => item && typeof item === 'object' && !Array.isArray(item));
+}
+
 class AIService {
     constructor() {
         this.groqApiKey = process.env.GROQ_API_KEY;
@@ -176,15 +188,19 @@ class AIService {
             const securityScore = pickSecurityScore(outputs);
             const llmModel = pickLlmModel(outputs, payload);
 
+            const rawSummary =
+                coerceToString(outputs.summary) ||
+                coerceToString(outputs.text) ||
+                coerceToString(outputs.answer) ||
+                'Analyse terminée avec succès.';
+
             const data = {
-                errors: outputs.errors || [],
-                vulnerabilities: outputs.vulnerabilities || [],
-                recommendations: outputs.recommendations || [],
-                summary:
-                    outputs.summary ||
-                    outputs.text ||
-                    outputs.answer ||
-                    'Analyse terminée avec succès.',
+                errors: coerceToObjectArray(outputs.errors),
+                vulnerabilities: coerceToObjectArray(outputs.vulnerabilities),
+                recommendations: Array.isArray(outputs.recommendations)
+                    ? outputs.recommendations.map(String)
+                    : [],
+                summary: rawSummary,
             };
             if (securityScore !== undefined) data.securityScore = securityScore;
             if (llmModel !== undefined) data.llmModel = llmModel;
