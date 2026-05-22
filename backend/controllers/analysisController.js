@@ -17,6 +17,7 @@ async function applyAiResultToAnalysis(analysis, result, deviceType) {
             vulnerabilities: result.data.vulnerabilities || [],
             recommendations: result.data.recommendations || [],
             summary: result.data.summary || '',
+            securityScore: result.data.securityScore,
         };
     } else if (result.data) {
         analysis.results = {
@@ -26,6 +27,7 @@ async function applyAiResultToAnalysis(analysis, result, deviceType) {
             summary: result.data.summary || result.error || 'Analysis failed — see error details below.',
         };
     }
+    analysis.updatedAt = Date.now();
     await analysis.save();
 }
 
@@ -99,8 +101,10 @@ const submitAnalysis = async (req, res) => {
         } catch (aiErr) {
             console.error('AI analysis/save error:', aiErr.message);
             try {
-                analysis.status = 'failed';
-                await analysis.save();
+                await Analysis.findByIdAndUpdate(analysis._id, {
+                    status: 'failed',
+                    $unset: { results: 1 },
+                });
             } catch (saveErr) {
                 console.error('Failed to mark analysis as failed:', saveErr.message);
             }
@@ -422,8 +426,15 @@ const submitAnalysisFile = async (req, res) => {
             });
             await applyAiResultToAnalysis(analysis, result, deviceType);
         } catch (aiErr) {
-            analysis.status = 'failed';
-            await analysis.save();
+            console.error('AI analysis/save error:', aiErr.message);
+            try {
+                await Analysis.findByIdAndUpdate(analysis._id, {
+                    status: 'failed',
+                    $unset: { results: 1 },
+                });
+            } catch (saveErr) {
+                console.error('Failed to mark analysis as failed:', saveErr.message);
+            }
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
