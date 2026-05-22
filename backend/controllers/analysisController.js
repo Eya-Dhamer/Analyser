@@ -17,6 +17,7 @@ async function applyAiResultToAnalysis(analysis, result, deviceType) {
             vulnerabilities: result.data.vulnerabilities || [],
             recommendations: result.data.recommendations || [],
             summary: result.data.summary || '',
+            securityScore: result.data.securityScore,
         };
     } else if (result.data) {
         analysis.results = {
@@ -26,6 +27,7 @@ async function applyAiResultToAnalysis(analysis, result, deviceType) {
             summary: result.data.summary || result.error || 'Analysis failed — see error details below.',
         };
     }
+    analysis.updatedAt = Date.now();
     await analysis.save();
 }
 
