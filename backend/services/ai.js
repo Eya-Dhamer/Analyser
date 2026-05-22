@@ -39,6 +39,128 @@ function mergeOutputsFromWorkflow(outputs) {
     return merged;
 }
 
+function coerceToString(val) {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+}
+
+function coerceToObjectArray(val) {
+    if (!Array.isArray(val)) return [];
+    return val.filter((item) => item && typeof item === 'object' && !Array.isArray(item));
+}
+
+/**
+ * Extract the embedded LLM audit report from Agent 3's archival output.
+ * The report is nested inside the add_mem0ai_memory action_input as llm_response.
+ */
+function extractEmbeddedReport(text) {
+    if (typeof text !== 'string') return null;
+    const marker = 'llm_response';
+    const idx = text.indexOf(marker);
+    if (idx === -1) return null;
+    const after = text.substring(idx + marker.length);
+    const reportStart = after.indexOf('#');
+    if (reportStart === -1) return null;
+    const reportText = after.substring(reportStart);
+    const endMarkers = ['"}', "\\\"}", '\\"assistant\\"'];
+    let endIdx = reportText.length;
+    for (const em of endMarkers) {
+        const pos = reportText.indexOf(em);
+        if (pos > 0 && pos < endIdx) endIdx = pos;
+    }
+    return reportText.substring(0, endIdx)
+        .replace(/\\\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+}
+
+/**
+ * Parse the METADATA_BLOCK summary from Agent 3's output.
+ */
+function extractMetadataSummary(text) {
+    if (typeof text !== 'string') return null;
+    const match = text.match(/SUMMARY:\s*(.+?)(?:\n|\\n|\[\/METADATA_BLOCK\]|\[END_METADATA_BLOCK\]|$)/i);
+    return match ? match[1].trim() : null;
+}
+
+/**
+ * Parse structured vulnerabilities from the audit report text.
+ * Looks for patterns like [ID_VULN_XX] - Description | Criticité : Level
+ */
+function parseVulnerabilities(report) {
+    if (!report) return [];
+    const vulns = [];
+    const pattern = /\[ID_VULN_\d+\]\s*[-–]\s*(.+?)\s*\*{0,2}\s*\|\s*Criticit[ée]\s*:\s*(\w+)\s*\n-\s*Ligne coupable\s*:\s*`?([^`\n]+)`?\s*\n-\s*Description\s*:\s*([\s\S]*?)(?=\n\n|\n\*\*\[ID_VULN|$)/gi;
+    let m;
+    while ((m = pattern.exec(report)) !== null) {
+        vulns.push({
+            type: m[1].trim(),
+            cvss: m[2].toLowerCase() === 'critical' ? 9.0 : m[2].toLowerCase() === 'high' ? 7.0 : m[2].toLowerCase() === 'medium' ? 5.0 : 3.0,
+            description: `${m[4].trim()} (Ligne: ${m[3].trim()})`,
+            recommendation: '',
+        });
+    }
+    return vulns;
+}
+
+/**
+ * Parse recommendations from the "Plan d'Action" section.
+ */
+function parseRecommendations(report) {
+    if (!report) return [];
+    const recs = [];
+    const actionIdx = report.indexOf('Plan d');
+    if (actionIdx === -1) return recs;
+    const section = report.substring(actionIdx);
+    const remedPattern = /Remédiation\s+VULN_\d+[^:]*:\s*(.+?)(?:\s*---|\n)/gi;
+    let m;
+    while ((m = remedPattern.exec(section)) !== null) {
+        recs.push(m[1].trim());
+    }
+    return recs;
+}
+
+/**
+ * Extract structured analysis data from Dify agent output text.
+ * Handles Agent 3's archival format where the report is embedded.
+ */
+function extractStructuredAnalysis(outputs) {
+    const text = typeof outputs.text === 'string' ? outputs.text : '';
+    const report = extractEmbeddedReport(text);
+    const metaSummary = extractMetadataSummary(text);
+
+    if (!report && !metaSummary) return null;
+
+    const vulns = parseVulnerabilities(report || text);
+    const recs = parseRecommendations(report || text);
+
+    const errors = [];
+    if (report) {
+        const secMatch = report.match(/Sécurité de l'Administration[\s\S]*?(?=###|$)/i);
+        if (secMatch) {
+            const issues = secMatch[0].match(/(?:Telnet|en clair|chiffrement faible|proxy[- ]arp)/gi);
+            if (issues) {
+                errors.push({
+                    type: 'Configuration Security',
+                    severity: 'high',
+                    description: secMatch[0].replace(/^###.*\n/, '').trim().substring(0, 500),
+                    solution: recs.length > 0 ? recs.join('; ') : 'Voir le plan d\'action dans le résumé.',
+                });
+            }
+        }
+    }
+
+    return {
+        summary: metaSummary || (report ? report.substring(0, 500) : text.substring(0, 500)),
+        vulnerabilities: vulns,
+        errors: errors,
+        recommendations: recs,
+    };
+}
+
 class AIService {
     constructor() {
         this.groqApiKey = process.env.GROQ_API_KEY;
@@ -176,15 +298,29 @@ class AIService {
             const securityScore = pickSecurityScore(outputs);
             const llmModel = pickLlmModel(outputs, payload);
 
+            // Try to extract structured data from agent archival output
+            const structured = extractStructuredAnalysis(outputs);
+
+            const rawSummary =
+                (structured && structured.summary) ||
+                coerceToString(outputs.summary) ||
+                coerceToString(outputs.text) ||
+                coerceToString(outputs.answer) ||
+                'Analyse terminée avec succès.';
+
             const data = {
-                errors: outputs.errors || [],
-                vulnerabilities: outputs.vulnerabilities || [],
-                recommendations: outputs.recommendations || [],
-                summary:
-                    outputs.summary ||
-                    outputs.text ||
-                    outputs.answer ||
-                    'Analyse terminée avec succès.',
+                errors: (structured && structured.errors.length > 0)
+                    ? structured.errors
+                    : coerceToObjectArray(outputs.errors),
+                vulnerabilities: (structured && structured.vulnerabilities.length > 0)
+                    ? structured.vulnerabilities
+                    : coerceToObjectArray(outputs.vulnerabilities),
+                recommendations: (structured && structured.recommendations.length > 0)
+                    ? structured.recommendations
+                    : (Array.isArray(outputs.recommendations)
+                        ? outputs.recommendations.map(String)
+                        : []),
+                summary: rawSummary,
             };
             if (securityScore !== undefined) data.securityScore = securityScore;
             if (llmModel !== undefined) data.llmModel = llmModel;

@@ -25,6 +25,11 @@ const analysisSchema = new mongoose.Schema({
         }],
         recommendations: [String],
         summary: String,
+        securityScore: {
+            type: Number,
+            min: 0,
+            max: 100,
+        },
     },
     agentUsed: {
         type: String,
@@ -40,6 +45,10 @@ const analysisSchema = new mongoose.Schema({
         default: 'pending',
     },
     createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+    updatedAt: {
         type: Date,
         default: Date.now,
     },
