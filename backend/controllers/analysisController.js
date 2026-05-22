@@ -99,9 +99,10 @@ const submitAnalysis = async (req, res) => {
         } catch (aiErr) {
             console.error('AI analysis/save error:', aiErr.message);
             try {
-                analysis.status = 'failed';
-                analysis.results = undefined;
-                await analysis.save();
+                await Analysis.findByIdAndUpdate(analysis._id, {
+                    status: 'failed',
+                    $unset: { results: 1 },
+                });
             } catch (saveErr) {
                 console.error('Failed to mark analysis as failed:', saveErr.message);
             }
@@ -425,9 +426,10 @@ const submitAnalysisFile = async (req, res) => {
         } catch (aiErr) {
             console.error('AI analysis/save error:', aiErr.message);
             try {
-                analysis.status = 'failed';
-                analysis.results = undefined;
-                await analysis.save();
+                await Analysis.findByIdAndUpdate(analysis._id, {
+                    status: 'failed',
+                    $unset: { results: 1 },
+                });
             } catch (saveErr) {
                 console.error('Failed to mark analysis as failed:', saveErr.message);
             }
